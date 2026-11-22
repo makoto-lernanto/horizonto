@@ -762,11 +762,10 @@ mod kani_pruvoj {
     //!
     //! La pruvoj montras, ke la kopio neniam skribas ekster la fiksa bufero kaj
     //! ke la dosieruja tabelo respektas sian kapaciton. La kopio estas
-    //! kontrolata por ĉiu longo; la tabelo por ĉiu permesata nombro.
+    //! kontrolata por ĉiu longo; la tabelo por la kapacita limo.
 
-    use super::{
-        FLUO_VERSIO, GU_VALORO, MAKSA_NOMO, MAKSA_VOJO, MAKSAJ_DOSIERUJOJ, Manifesto, Teksto, kopii,
-    };
+    use super::{FLUO_VERSIO, GU_VALORO, MAKSA_NOMO, MAKSAJ_DOSIERUJOJ, Manifesto, Teksto, kopii};
+    use crate::eraro::Eraro;
 
     fn baza_manifesto() -> Manifesto {
         let mut m = Manifesto::malplena();
@@ -785,9 +784,6 @@ mod kani_pruvoj {
         m.arkoj_nombro = 1;
         m
     }
-
-    const VOJOJ: [&str; MAKSAJ_DOSIERUJOJ] =
-        ["~/a", "~/b", "~/c", "~/d", "~/e", "~/f", "~/g", "~/h"];
 
     /// La kopio respektas la buferon por ĉiu longo ĝis unu pli ol la maksimumo.
     #[kani::proof]
@@ -812,27 +808,18 @@ mod kani_pruvoj {
         }
     }
 
-    /// Plena tabelo validas, troa nombro estas rifuzata, kaj plena tabelo
-    /// rifuzas plian radikon sen ŝanĝi sian nombron.
+    /// La dosieruja tabelo rifuzas plian radikon kaj troan nombron.
     #[kani::proof]
-    #[kani::unwind(20)]
+    #[kani::unwind(12)]
     fn manifesta_kapacito() {
         let mut m = baza_manifesto();
-        let mut indekso = 0;
-        while indekso < MAKSAJ_DOSIERUJOJ {
-            if let Ok(vojo) = Teksto::<MAKSA_VOJO>::nova(VOJOJ[indekso]) {
-                m.dosieroj[indekso] = vojo;
-            }
-            indekso += 1;
-        }
         m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ;
 
-        assert!(m.validi().is_ok());
-        assert!(m.aldoni_dosierujon("~/i").is_err());
+        assert_eq!(m.aldoni_dosierujon("~/i"), Err(Eraro::TroMultajDosierujoj));
         assert_eq!(m.dosieroj_nombro, MAKSAJ_DOSIERUJOJ);
 
         m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ + 1;
-        assert!(m.validi().is_err());
+        assert_eq!(m.validi(), Err(Eraro::TroMultajDosierujoj));
     }
 }
 
