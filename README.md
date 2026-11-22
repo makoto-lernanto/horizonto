@@ -11,6 +11,11 @@ La normiga priskribo estas [`docs/HORIZONTO.md`](docs/HORIZONTO.md). La
 kvalita konstitucio kaj la fazoj troviĝas en tiu dokumento; ĉi tiu README
 nur resumas la projekton.
 
+## Anonco
+
+**2026-11-22:** `makoto-lernanto` aldonis GPG-ŝlosilon al la GitHub-konto
+(`A61A98D06B0B8E8F`) kaj subskribas la commit'ojn de Horizonto per ĝi.
+
 ## Tavoloj
 
 | Tavolo | Posedanto | Enhavo |
