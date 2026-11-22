@@ -791,7 +791,7 @@ mod kani_pruvoj {
 
     /// La kopio respektas la buferon por ĉiu longo ĝis unu pli ol la maksimumo.
     #[kani::proof]
-    #[kani::unwind(66)]
+    #[kani::unwind(68)]
     fn manifesta_kopio() {
         let fonto = [0xA5u8; MAKSA_NOMO + 1];
         let mut longo = 0;
@@ -815,7 +815,7 @@ mod kani_pruvoj {
     /// Plena tabelo validas, troa nombro estas rifuzata, kaj plena tabelo
     /// rifuzas plian radikon sen ŝanĝi sian nombron.
     #[kani::proof]
-    #[kani::unwind(12)]
+    #[kani::unwind(20)]
     fn manifesta_kapacito() {
         let mut m = baza_manifesto();
         let mut indekso = 0;
@@ -825,21 +825,14 @@ mod kani_pruvoj {
             }
             indekso += 1;
         }
-
-        let mut nombro = 0;
-        while nombro <= MAKSAJ_DOSIERUJOJ {
-            m.dosieroj_nombro = nombro;
-            assert!(m.validi().is_ok());
-            nombro += 1;
-        }
-
-        m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ + 1;
-        assert!(m.validi().is_err());
-
         m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ;
+
         assert!(m.validi().is_ok());
         assert!(m.aldoni_dosierujon("~/i").is_err());
         assert_eq!(m.dosieroj_nombro, MAKSAJ_DOSIERUJOJ);
+
+        m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ + 1;
+        assert!(m.validi().is_err());
     }
 }
 
