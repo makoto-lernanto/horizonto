@@ -758,13 +758,15 @@ impl<'a> Legilo<'a> {
 
 #[cfg(kani)]
 mod kani_pruvoj {
-    //! Kani-pruvo pri la manifestaj limoj (S16–S22).
+    //! Kani-pruvoj pri la manifestaj limoj (S16–S22).
     //!
-    //! La pruvo montras, ke la kopio neniam skribas ekster la fiksa bufero kaj
-    //! ke la dosieruja tabelo respektas sian kapaciton. `validi` rifuzas troan
-    //! nombron antaŭ ol tranĉi la tabelon.
+    //! La pruvoj montras, ke la kopio neniam skribas ekster la fiksa bufero kaj
+    //! ke la dosieruja tabelo respektas sian kapaciton. La kopio estas
+    //! kontrolata por ĉiu longo; la tabelo por ĉiu permesata nombro.
 
-    use super::{FLUO_VERSIO, GU_VALORO, MAKSA_NOMO, MAKSAJ_DOSIERUJOJ, Manifesto, Teksto, kopii};
+    use super::{
+        FLUO_VERSIO, GU_VALORO, MAKSA_NOMO, MAKSA_VOJO, MAKSAJ_DOSIERUJOJ, Manifesto, Teksto, kopii,
+    };
 
     fn baza_manifesto() -> Manifesto {
         let mut m = Manifesto::malplena();
@@ -787,41 +789,57 @@ mod kani_pruvoj {
     const VOJOJ: [&str; MAKSAJ_DOSIERUJOJ] =
         ["~/a", "~/b", "~/c", "~/d", "~/e", "~/f", "~/g", "~/h"];
 
-    /// Kopio kaj dosieruja kapacito respektas la fiksajn limojn.
+    /// La kopio respektas la buferon por ĉiu longo ĝis unu pli ol la maksimumo.
     #[kani::proof]
-    #[kani::unwind(84)]
-    fn manifestaj_limoj() {
-        let bajtoj: [u8; 80] = kani::any();
-        let longo: usize = kani::any();
-        kani::assume(longo <= 80);
-        let mut ujo = [0u8; MAKSA_NOMO];
-        let rezulto = kopii(&bajtoj[..longo], &mut ujo, MAKSA_NOMO);
-        if longo <= MAKSA_NOMO {
-            assert!(rezulto.is_ok());
-        } else {
-            assert!(rezulto.is_err());
+    #[kani::unwind(66)]
+    fn manifesta_kopio() {
+        let fonto = [0xA5u8; MAKSA_NOMO + 1];
+        let mut longo = 0;
+        while longo <= MAKSA_NOMO + 1 {
+            let mut celo = [0x5Au8; MAKSA_NOMO];
+            let rezulto = kopii(&fonto[..longo], &mut celo, MAKSA_NOMO);
+            if longo <= MAKSA_NOMO {
+                assert!(rezulto.is_ok());
+                assert_eq!(celo[..longo], fonto[..longo]);
+                if longo < MAKSA_NOMO {
+                    assert_eq!(celo[longo], 0x5A);
+                }
+            } else {
+                assert!(rezulto.is_err());
+                assert_eq!(celo, [0x5Au8; MAKSA_NOMO]);
+            }
+            longo += 1;
         }
+    }
 
-        let nombro: usize = kani::any();
-        kani::assume(nombro <= MAKSAJ_DOSIERUJOJ + 1);
+    /// Plena tabelo validas, troa nombro estas rifuzata, kaj plena tabelo
+    /// rifuzas plian radikon sen ŝanĝi sian nombron.
+    #[kani::proof]
+    #[kani::unwind(12)]
+    fn manifesta_kapacito() {
         let mut m = baza_manifesto();
-        m.dosieroj_nombro = nombro;
-        if nombro > MAKSAJ_DOSIERUJOJ {
-            assert!(m.validi().is_err());
-        }
-
-        let mut plena = baza_manifesto();
         let mut indekso = 0;
         while indekso < MAKSAJ_DOSIERUJOJ {
-            if let Ok(vojo) = Teksto::<64>::nova(VOJOJ[indekso]) {
-                plena.dosieroj[indekso] = vojo;
+            if let Ok(vojo) = Teksto::<MAKSA_VOJO>::nova(VOJOJ[indekso]) {
+                m.dosieroj[indekso] = vojo;
             }
             indekso += 1;
         }
-        plena.dosieroj_nombro = MAKSAJ_DOSIERUJOJ;
-        assert!(plena.validi().is_ok());
-        assert!(plena.aldoni_dosierujon("~/i").is_err());
-        assert_eq!(plena.dosieroj_nombro, MAKSAJ_DOSIERUJOJ);
+
+        let mut nombro = 0;
+        while nombro <= MAKSAJ_DOSIERUJOJ {
+            m.dosieroj_nombro = nombro;
+            assert!(m.validi().is_ok());
+            nombro += 1;
+        }
+
+        m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ + 1;
+        assert!(m.validi().is_err());
+
+        m.dosieroj_nombro = MAKSAJ_DOSIERUJOJ;
+        assert!(m.validi().is_ok());
+        assert!(m.aldoni_dosierujon("~/i").is_err());
+        assert_eq!(m.dosieroj_nombro, MAKSAJ_DOSIERUJOJ);
     }
 }
 

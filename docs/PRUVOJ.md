@@ -21,9 +21,10 @@ aliras aparataron, reton aŭ la dosiersistemon.
 | P2 | `damago::kani_pruvoj::ortangula_kunigo` | S08, D02, D05 | Por du arbitraj ortanguloj ene de 16×16, la damaĝaro restas en sia kapacito, ĉiu ero eniĝas la surfacon kaj kovras la originalojn. | 600 s |
 | P3 | `damago::kani_pruvoj::plena_damagxaro_rifuzas` | D02 | Plena damaĝaro rifuzas plian ortangulon kaj konservas sian nombron; neniu damaĝo estas silente forigita. | 600 s |
 | P4 | `fenestro::kani_pruvoj::generacia_reuzo` | S05 | Por arbitra valida identigilo, la sekva generacio (kiam ĝi ekzistas) ŝanĝas la identigilon kaj malnova identigilo estas rifuzata; generacio nulo kaj indekso ≥ 64 estas rifuzataj. | 600 s |
-| P5 | `manifesto::kani_pruvoj::manifestaj_limoj` | S16–S22 | La fiksa kopio respektas la buferon, troa dosieruja nombro estas rifuzata antaŭ tranĉo, kaj plena tabelo rifuzas plian radikon sen ŝanĝi sian nombron. | 600 s |
+| P5 | `manifesto::kani_pruvoj::manifesta_kopio` | S16–S17 | Por ĉiu longo ĝis unu pli ol la maksimumo, la fiksa kopio sukcesas nur ene de la bufero, kopias la ĝustajn bajtojn kaj lasas la ceteron netuŝita. | 600 s |
+| P6 | `manifesto::kani_pruvoj::manifesta_kapacito` | S20–S22 | Por ĉiu nombro 0–8 la dosieruja tabelo validas; nombro 9 estas rifuzata antaŭ tranĉo, kaj plena tabelo rifuzas plian radikon sen ŝanĝi sian nombron. | 600 s |
 
-La minimumo por H1 estas kvar pruvoj; ĉi tiu Fazo havas kvin.
+La minimumo por H1 estas kvar pruvoj; ĉi tiu Fazo havas ses.
 
 ## 3. Vokado
 
