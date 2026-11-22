@@ -1,0 +1,31 @@
+# Permesila kaj fonta kontrolo por Horizonto (HORIZONTO.md §6.3 Q04).
+# Per `cargo deny check`; en DI ĝi estas aparta tasko.
+# Permesataj licencoj: MIT, Apache-2.0, BSD-3-Clause, Unicode-DFS-2016.
+# Nova licenco postulas skriban aprobon de la uzanto.
+
+[graph]
+exclude-dev = true
+
+[advisories]
+yanked = "deny"
+
+[licenses]
+include-dev = false
+include-build = true
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Unicode-DFS-2016",
+]
+confidence-threshold = 0.93
+# La laborloko nun havas neniun eksteran dependaĵon; «ne renkontita» ne eraru.
+unused-allowed-license = "allow"
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,13 @@
+[package]
+name = "libhorizonto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Protokoloj kaj manifesta logiko de la Horizonto-sistemo"
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

@@ -1,0 +1,197 @@
+name: DI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# La laborfluo nur legas la deponejon.
+permissions:
+  contents: read
+
+jobs:
+  # Q01: la tuta loka pordego, plus la krucaj konstruloj por ambaŭ `no_std`
+  # celoj. `just kontroli` mem estas sen Kani kaj sen reto.
+  kontroli-kaj-konstrui:
+    name: Kontroli kaj konstrui
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Elpreni la deponejon
+        uses: actions/checkout@v4
+
+      - name: Instali Rust 1.100.0
+        uses: dtolnay/rust-toolchain@1.100.0
+        with:
+          components: clippy, rustfmt
+          targets: x86_64-unknown-none,aarch64-unknown-none
+
+      - name: Instali just
+        uses: taiki-e/install-action@just
+
+      - name: Ruli just kontroli
+        run: just kontroli
+
+      - name: Kontroli la purecon de libhorizonto
+        run: bash tools/sen-glitkomo.sh --kontroli
+
+      - name: Kontroli la publikan dokumentaron
+        run: just dokumentaro
+
+      - name: Konstrui por x86_64-unknown-none
+        run: cargo build -p libhorizonto --release --target x86_64-unknown-none
+
+      - name: Konstrui por aarch64-unknown-none
+        run: cargo build -p libhorizonto --release --target aarch64-unknown-none
+
+  # Q04: nur la permesoj kaj fontoj listigitaj en `deny.toml`. Aparta tasko,
+  # do la loka pordego restas rulebla sen `cargo-deny`.
+  permesiloj-kontroli:
+    name: Permesila kontrolo (cargo-deny)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Elpreni la deponejon
+        uses: actions/checkout@v4
+
+      - name: Instali Rust 1.100.0
+        uses: dtolnay/rust-toolchain@1.100.0
+
+      - name: Instali cargo-deny
+        uses: taiki-e/install-action@cargo-deny
+
+      - name: Ruli cargo deny check
+        run: cargo deny check
+
+  # Q07: Miri super la unu-testoj de `libhorizonto`, kun nokta ilĉeno.
+  miri-kontroli:
+    name: Miri-kontrolo de libhorizonto
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Elpreni la deponejon
+        uses: actions/checkout@v4
+
+      - name: Instali Rust nightly kun Miri
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri, rust-src
+
+      - name: Instali just
+        uses: taiki-e/install-action@just
+
+      - name: Ruli just miri
+        run: just miri
+
+  # Q06: `cargo kani list` eltrovas la pruvojn; la matrico ricevas unu
+  # eniron por ĉiu pruvo. La listo estas la sola fonto, ne fiksa nombro.
+  kani-pretigi:
+    name: Pretigi la liston de Kani-pruvoj
+    runs-on: ubuntu-latest
+    needs: kontroli-kaj-konstrui
+    timeout-minutes: 30
+    outputs:
+      pruvoj: ${{ steps.listo.outputs.pruvoj }}
+    steps:
+      - name: Elpreni la deponejon
+        uses: actions/checkout@v4
+
+      - name: Instali Rust 1.100.0
+        uses: dtolnay/rust-toolchain@1.100.0
+        with:
+          targets: x86_64-unknown-none,aarch64-unknown-none
+
+      # La oficiala ago instalas Kani kun kongrua CBMC. Ĝi interne ŝaltas
+      # `stable`, do la sekva paŝo restarigas 1.100.0.
+      - name: Instali Kani
+        uses: model-checking/kani-github-action@v1
+        with:
+          kani-version: latest
+          command: kani
+          args: --version
+
+      - name: Listigi la pruvojn
+        id: listo
+        run: |
+          rustup default 1.100.0
+          cargo kani -p libhorizonto -Z unstable-options list --format json
+          nombro=$(jq '."standard-harnesses" | [.[][]] | length' kani-list.json)
+          echo "Pruvoj: $nombro"
+          test "$nombro" -ge 4
+          echo "pruvoj=$(jq -c '."standard-harnesses" | [.[][]] | to_entries | map({indekso: .key, pruvo: .value})' kani-list.json)" >> "$GITHUB_OUTPUT"
+
+  # Unu pruvo por tasko: pruvo, kiu blokiĝas, estas nuligita de `timeout`
+  # post 10 minutoj kaj ĝia protokolo supreniĝas; la ceteraj finiĝas sendepende.
+  kani-kontroli:
+    name: Formala kontrolo per Kani (${{ matrix.pruvo }})
+    runs-on: ubuntu-latest
+    needs: kani-pretigi
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.kani-pretigi.outputs.pruvoj) }}
+    steps:
+      - name: Elpreni la deponejon
+        uses: actions/checkout@v4
+
+      - name: Instali Rust 1.100.0
+        uses: dtolnay/rust-toolchain@1.100.0
+
+      - name: Instali Kani
+        uses: model-checking/kani-github-action@v1
+        with:
+          kani-version: latest
+          command: kani
+          args: --version
+
+      # `--exact` malhelpas, ke prefiksa nomo elektu ankaŭ alian pruvon.
+      - name: Ruli unu pruvon
+        shell: bash
+        env:
+          PRUVO: ${{ matrix.pruvo }}
+        run: |
+          rustup default 1.100.0
+          set -o pipefail
+          echo "Pruvo: $PRUVO (limo 600 s)"
+          timeout -k 10 600 cargo kani -p libhorizonto -Z unstable-options \
+            --exact --harness "$PRUVO" 2>&1 | tee kani.log
+
+      - name: Alŝuti la protokolon
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kani-${{ matrix.indekso }}
+          path: kani.log
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
+
+  # La taskoj de H2 kaj H5 estas markitaj «ne aktiva», ne forigitaj (§6.6).
+  paritateco-ne-aktiva:
+    name: Paritateco (ne aktiva ĝis H2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Noto
+        run: |
+          echo "ne aktiva: la pikselaj haŝoj de ambaŭ arkoj venas en H2"
+
+  izolado-kontroli-ne-aktiva:
+    name: Izolado-kontroli (ne aktiva ĝis H2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Noto
+        run: |
+          echo "ne aktiva: la atakoj de §5 ruliĝas en QEMU ekde H2"
+
+  paki-kontroli-ne-aktiva:
+    name: Paki-kontroli (ne aktiva ĝis H5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Noto
+        run: |
+          echo "ne aktiva: la pakaĵa fumo venas en H5"
